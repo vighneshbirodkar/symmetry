@@ -134,9 +134,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
 
                         sym_real[rho + rho_max, phi_idx] += ms_real
                         sym_imag[rho + rho_max, phi_idx] += ms_imag
-
-
-
                         d += 1
 
                     theta_idx += 1
@@ -146,7 +143,7 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
 
     sym_mag = sym_real_arr**2 + sym_imag_arr**2
     d_mag = d_sym_real_arr**2 + d_sym_imag_arr**2
-    return sym_mag, d_mag, np.array(phi_list), np.array(vote_map)#.astype(np.int)
+    return sym_mag, d_mag, np.array(phi_list)
 
 
 def line_coords(img, sym, dist, angle_bins):

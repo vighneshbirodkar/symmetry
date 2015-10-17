@@ -18,7 +18,7 @@ if img_in.ndim == 2:
 
 img = color.rgb2gray(img_in)
 T = time.time()
-sym, d, angle_bins, vote_map = symmetry.symmetry(img, min_dist=2, max_dist=80)
+sym, d, angle_bins = symmetry.symmetry(img, min_dist=2, max_dist=80)
 print('Time = ', time.time() - T)
 
 x1,y1,x2,y2 = symmetry.line_coords(img_in, sym, d, angle_bins)
@@ -37,7 +37,5 @@ ax.plot_surface(xx, yy, sym, cstride=1, rstride=1, linewidth=0, antialiased=Fals
 plt.figure()
 line = draw.line(y1, x1, y2, x2)
 draw.set_color(img_in, line, (1,0,0))
-plt.imshow(vote_map, cmap='gray')
-plt.figure()
 plt.imshow(img_in)
 plt.show()

@@ -1,5 +1,4 @@
-#cython: cdivision=True
-#cython: boundscheck=False
+#cython: cdivision=False
 #cython: nonecheck=False
 #cython: wraparound=False
 import numpy as np
@@ -9,7 +8,7 @@ from matplotlib import pyplot as plt
 from scipy.ndimage.filters import convolve
 
 cimport numpy as cnp
-from libc.math cimport sqrt, sin, cos, floor, round
+from libc.math cimport sqrt, sin, cos, floor, round, abs
 
 
 cdef cnp.float_t PI_BY_2 = np.pi/2
@@ -21,7 +20,7 @@ cdef inline cnp.float_t adjust_angle(cnp.float_t angle):
     cdef cnp.float_t floor_index = floor(angle/PI)
     return angle - floor_index*PI
 
-def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
+def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
              num_angles = 16, debug_flag=False):
 
     cdef Py_ssize_t phi_idx=0, idx=0, theta_idx=0
@@ -32,7 +31,7 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
     cdef cnp.float_t delta_theta = 0
     cdef cnp.float_t theta, theta1
     cdef Py_ssize_t rho, rho_min=0
-    cdef Py_ssize_t width = 16
+    cdef Py_ssize_t width = 12
     cdef bint debug = debug_flag
     cdef cnp.float_t[::1] phi_list = np.pi*(1.0/num_phi)*np.arange(num_phi)
     #phi_list[:] = 0
@@ -44,10 +43,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
     cdef cnp.float_t[:, ::1] sym_imag
     cdef Py_ssize_t dmin=min_dist, dmax = max_dist
     cdef cnp.float_t ms_real, ms_imag
-    cdef cnp.float_t[::1] d_sym_real
-    cdef cnp.float_t[::1] d_sym_imag
-    cdef cnp.float_t[:,::1] debug_map_real
-    cdef cnp.float_t[:,::1] debug_map_imag
 
     d_sym_real_arr = np.zeros(dmax)
     d_sym_imag_arr = np.zeros(dmax)
@@ -57,10 +52,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
 
     xmax = img.shape[1]
     ymax = img.shape[0]
-
-    debug_map_real = np.zeros((ymax, xmax), dtype=np.float)
-    debug_map_imag = np.zeros((ymax, xmax), dtype=np.float)
-
 
     rho_max = <Py_ssize_t>(sqrt(xmax*xmax + ymax*ymax) + 1)
 
@@ -80,12 +71,13 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
         kernel = morlet.kernel(width, sigma, phi_list[idx])
         convolve(img_arr.copy(), np.real(kernel), j_real_arr[:, :, idx])
         convolve(img_arr.copy(), np.imag(kernel), j_imag_arr[:, :, idx])
+        #io.imsave('out/real_' + str(idx) + '.png',morlet.normalize(j_real_arr[:, :, idx]) )
         idx += 1
 
     if debug:
         print('Pre Computing Done')
 
-    #phi_idx = 5
+    phi_idx = 0
     while phi_idx < num_phi:
         phi = phi_list[phi_idx]
         phi_m_pi_by_2 = phi - PI_BY_2
@@ -105,9 +97,8 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
 
                     delta_theta = theta_list[theta_idx]
 
-                    theta = phi + delta_theta
-                    theta = adjust_angle(theta)
-                    theta1 = adjust_angle(2*phi - theta)
+                    theta = (phi - PI_BY_2 + delta_theta)%PI
+                    theta1 = (2*phi - theta)%PI
 
                     theta_i = <Py_ssize_t>(theta*num_phi/PI)
                     theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
@@ -118,9 +109,8 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
 
                         # If `d` could be valid for any angle, `d` should
                         # not be allowed to vote for any angle
-                        if d >= cx or d >= cy or d + cx >= xmax or d + cy >= ymax:
-                            d += 1
-                            continue
+                        #if d >= cx or d >= cy or d + cx >= xmax or d + cy >= ymax:
+                        #    d += 1
                         #    continue
 
                         x = <Py_ssize_t>(cx - d*cos(phi_m_pi_by_2))
@@ -130,17 +120,11 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
 
                         if x < 0 or y < 0 or x1 < 0 or y1 < 0:
                             d += 1
-                            raise ValueError
-
-                            #raise ValueError(x,y,x1,y1)
+                            continue
 
                         if x >= xmax or y >= ymax or x1 >= xmax or y1 >= ymax:
                             d += 1
-                            raise ValueError
-
-
-                        #if phi_idx == 0:
-                        #    raise ValueError('phi_idx is 0')
+                            continue
 
                         ms_real = j_real[y, x, theta_i]*j_real[y1, x1, theta1_i]
                         ms_real += j_imag[y, x, theta_i]*j_imag[y1, x1, theta1_i]
@@ -148,14 +132,11 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        debug_map_real[cy, cx] += ms_real #+ ms_imag*ms_imag
-                        debug_map_imag[cy, cx] += ms_imag
-
                         sym_real[rho + rho_max, phi_idx] += ms_real
                         sym_imag[rho + rho_max, phi_idx] += ms_imag
 
-                        d_sym_real[d] += ms_real
-                        d_sym_imag[d] += ms_imag
+
+
                         d += 1
 
                     theta_idx += 1
@@ -165,4 +146,38 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=3,morlet_width=16,
 
     sym_mag = sym_real_arr**2 + sym_imag_arr**2
     d_mag = d_sym_real_arr**2 + d_sym_imag_arr**2
-    return sym_mag, d_mag, np.array(phi_list)
+    return sym_mag, d_mag, np.array(phi_list), np.array(vote_map)#.astype(np.int)
+
+
+def line_coords(img, sym, dist, angle_bins):
+    img = img[:,:,0:3]
+
+    r, t = np.unravel_index(np.argmax(sym), sym.shape)
+    #print("max = ", sym.max(axis=0))
+    line_angle = angle_bins[t] - np.pi/2
+    offset = sym.shape[0]/2
+    ymax, xmax, ch = img.shape
+
+    if line_angle==0:
+        x1 = r - offset
+        y1 = 0
+        x2 = r - offset
+        y2 = ymax-1
+    elif line_angle == -np.pi/2:
+        x1 = 0
+        y1 = -(r - offset)
+        x2 = xmax - 1
+        y2 = -(r-offset)
+    else:
+        #line_angle = np.pi - line_angle
+        m = -np.cos(line_angle)/np.sin(line_angle)
+        c = (r - offset)/np.sin(line_angle)
+        # y = mx + c
+        x1 = -c/m
+        y1 = 0
+        x2 = (ymax-1 - c)/m
+        y2 = ymax-1
+
+    x1,y2,x2,y2 = map(int, (x1,y1,x2,y2))
+
+    return x1,y1,x2,y2

@@ -26,5 +26,6 @@ def kernel(width, sigma, theta):
     return c1*psi
 
 def normalize(arr):
+    arr = arr.astype(np.float)
     mn, mx = np.min(arr), np.max(arr)
     return (arr - mn)/(mx - mn)

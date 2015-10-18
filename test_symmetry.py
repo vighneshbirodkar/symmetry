@@ -24,7 +24,7 @@ FN = np.zeros(N, dtype=np.float)
 
 DEBUG = True
 
-for idx in range(1,2):
+for idx in range(1,177):
 
     name = '/home/vighnesh/images/symmetry/S/I%03d.png' % idx
     mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx
@@ -86,7 +86,7 @@ for idx in range(1,2):
             if tp < 1 and utils.angle_diff(angle_deg, true_angle_deg) < 10 and abs(dist) < 0.2*true_len:
                 tp += 1
                 fn -= 1
-                if fp > 1:
+                if tp > 1:
                     raise ValueError('dist = ' + str(dist) + ", thresh = ", 0.2*true_len)
                 #print('True')
             else:

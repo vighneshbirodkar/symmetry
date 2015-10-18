@@ -46,8 +46,8 @@ def line_coords(img, sym, dist, angle_bins, drange=10, arange=1, num_lines=1):
         #print("dmin = ", dmin)
         #print("dmax = ", dmax)
 
-        amin = np.clip(t - arange, 0, sym.shape[1])
-        amax = np.clip(t + arange, 0, sym.shape[1])
+        amin = np.clip(t - arange - 1, 0, sym.shape[1])
+        amax = np.clip(t + arange + 1, 0, sym.shape[1])
 
         sym[dmin:dmax, amin:amax] = 0
 

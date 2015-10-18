@@ -1,11 +1,14 @@
 #cython: cdivision=False
 #cython: nonecheck=False
+#cython: boundscheck=False
 #cython: wraparound=False
+
 import numpy as np
 import morlet
 from skimage import io, util, color
 from matplotlib import pyplot as plt
 from scipy.ndimage.filters import convolve
+from cython.parallel import prange
 
 cimport numpy as cnp
 from libc.math cimport sqrt, sin, cos, floor, round, abs
@@ -23,7 +26,7 @@ cdef inline cnp.float_t adjust_angle(cnp.float_t angle):
 def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
              num_angles = 16, debug_flag=False):
 
-    cdef Py_ssize_t phi_idx=0, idx=0, theta_idx=0
+    cdef Py_ssize_t phi_idx, idx=0, theta_idx=0
     cdef Py_ssize_t xmax, ymax, rho_max, cx, cy, x, y ,x1 ,y1,d, theta_i, theta1_i
     cdef cnp.int_t num_phi = num_angles
     cdef cnp.float_t sigma = morlet_sigma
@@ -77,13 +80,9 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
     if debug:
         print('Pre Computing Done')
 
-    phi_idx = 0
-    while phi_idx < num_phi:
+    for phi_idx in range(num_phi):
         phi = phi_list[phi_idx]
         phi_m_pi_by_2 = phi - PI_BY_2
-
-        if debug:
-            print('Running for phi Index',phi_idx)
 
         for cx in range(xmax):
 
@@ -138,43 +137,7 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
 
                     theta_idx += 1
 
-        phi_idx += 1
-
 
     sym_mag = sym_real_arr**2 + sym_imag_arr**2
     d_mag = d_sym_real_arr**2 + d_sym_imag_arr**2
     return sym_mag, d_mag, np.array(phi_list)
-
-
-def line_coords(img, sym, dist, angle_bins):
-    img = img[:,:,0:3]
-
-    r, t = np.unravel_index(np.argmax(sym), sym.shape)
-    #print("max = ", sym.max(axis=0))
-    line_angle = angle_bins[t] - np.pi/2
-    offset = sym.shape[0]/2
-    ymax, xmax, ch = img.shape
-
-    if line_angle==0:
-        x1 = r - offset
-        y1 = 0
-        x2 = r - offset
-        y2 = ymax-1
-    elif line_angle == -np.pi/2:
-        x1 = 0
-        y1 = -(r - offset)
-        x2 = xmax - 1
-        y2 = -(r-offset)
-    else:
-        #line_angle = np.pi - line_angle
-        m = -np.cos(line_angle)/np.sin(line_angle)
-        c = (r - offset)/np.sin(line_angle)
-        # y = mx + c
-        x1 = -c/m
-        y1 = 0
-        x2 = (ymax-1 - c)/m
-        y2 = ymax-1
-
-    x1,y2,x2,y2 = map(int, (x1,y1,x2,y2))
-
-    return x1,y1,x2,y2

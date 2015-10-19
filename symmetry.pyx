@@ -131,8 +131,8 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        sym_real[rho + rho_max, phi_idx] += ms_real
-                        sym_imag[rho + rho_max, phi_idx] += ms_imag
+                        sym_real[rho + rho_max, phi_idx] += ms_real + .0005/(d*d)
+                        sym_imag[rho + rho_max, phi_idx] += ms_imag + .0005/(d*d)
                         d += 1
 
                     theta_idx += 1

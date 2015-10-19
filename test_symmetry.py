@@ -13,6 +13,7 @@ from scipy.io import loadmat
 
 color_list = [red, blue, green, yellow, aqua, orange, pink, purple, coral, indigo ]
 
+
 fp = 0
 tp = 0
 fn = 0
@@ -21,6 +22,7 @@ N = 10
 FP = np.zeros(N, dtype=np.float)
 TP = np.zeros(N, dtype=np.float)
 FN = np.zeros(N, dtype=np.float)
+not_found = []
 
 DEBUG = True
 
@@ -33,13 +35,9 @@ for idx in range(1,177):
 
     true_x1, true_y1 = mat['segments'][0][0][0].astype(np.int)
     true_x2, true_y2 = mat['segments'][0][0][1].astype(np.int)
-    true_len = np.hypot(true_y1 - true_y2, true_x1 - true_x2)
-    true_angle = np.arctan2(true_y1 - true_y2, true_x1 - true_x2)
-    true_angle = abs(true_angle%np.pi)
-    true_angle_deg = true_angle*180/np.pi
-    #print("True Angle = ", true_angle*180/np.pi)
+    true_line = utils.Line(true_x1, true_y1, true_x2, true_y2)
 
-    true_cx, true_cy = (true_x1 + true_x2)/2.0, (true_y1 + true_y2)/2.0
+
     img_in = io.imread(name)
     img_in = util.img_as_float(img_in)
 
@@ -52,7 +50,7 @@ for idx in range(1,177):
     sym, d, angle_bins = symmetry.symmetry(img, min_dist=2, max_dist=80)
 
 
-    lines = utils.line_coords(img_in, sym, d, angle_bins, num_lines=N, drange = 0.2*true_len)
+    lines = utils.line_coords(img_in, sym, d, angle_bins, num_lines=N, drange = 20)
 
     tp = 0
     fp = 0
@@ -62,44 +60,49 @@ for idx in range(1,177):
         subset = lines[0:i+1]
 
         if DEBUG:
-            x1,y1,x2,y2,r,t = lines[i]
-            line = draw.line(y1,x1,y2,x2)
-            draw.set_color(img_in, line, color_list[i])
-
-
-
+            lines[i].draw(img_in, color_list[i])
         fn = 1
         tp = 0
         fp = 0
 
         #print('----------------Lines = ' + str(i + 1))
-        for j in range(len(subset)):
-            x1,y1,x2,y2,r,t = subset[j]
 
-            dist = utils.dist_point_line(true_cx, true_cy, x1,y1,x2,y2)
-            #print('Dist = ' + str(dist))
+        found = False
+        true_lines = [utils.Line(true_x1, true_y1, true_x2, true_y2)]
 
-            angle = angle_bins[t]
-            angle_deg = angle*180/np.pi
+        for cur_line in subset:
+            k = 0
+            while k < len(true_lines):
+                dist = true_lines[k].dist_to_inf_line(cur_line)
+                angle_diff_deg = true_lines[k].angle_diff_inf_line_deg(cur_line)
+                #print('Thresh = ', 0.2*true_lines[k].len)
+                #print(dist, angle_diff_deg, dist < 0.2*true_lines[k].len, angle_diff_deg < 10)
+                if dist < 0.2*true_lines[k].len and angle_diff_deg < 10:
+                    tp += 1
+                    fn -= 1
+                    #raise IndexError
+                    if tp > 1:
+                        raise ValueError
+                    found = True
+                    true_lines.remove(true_lines[k])
+                else:
+                    k += 1
 
-            # in single line case, prevent 2 lines from being detected
-            if tp < 1 and utils.angle_diff(angle_deg, true_angle_deg) < 10 and abs(dist) < 0.2*true_len:
-                tp += 1
-                fn -= 1
-                if tp > 1:
-                    raise ValueError('dist = ' + str(dist) + ", thresh = ", 0.2*true_len)
-                #print('True')
-            else:
-                fp += 1
+            fp = i + 1 - tp
 
 
         #print(tp,fp,fn)
             #print("Dist = ",dist,"angle = ", angle*180/np.pi)
 
         #print(tp,fp,fn)
+        assert tp <= 2
+        assert fp >= 0
+        assert fn >= 0
         TP[i] += tp
         FP[i] += fp
         FN[i] += fn
+        if (i + 1) == N and tp < 1:
+            not_found.append(idx)
 
     if DEBUG:
         fname = '/home/vighnesh/images/symmetry/out/I%03d.png' % idx
@@ -113,11 +116,14 @@ for idx in range(1,177):
 print('TP = ',TP)
 print('FP = ',FP)
 print('FN = ',FN)
+print('not found = ', not_found)
 
 print(TP/(TP + FP))
 print(TP/(TP + FN))
 plt.plot(TP/(TP + FN), TP/(TP + FP), marker='o')
 plt.axes().set_xlim(0,1.2)
 plt.axes().set_ylim(0,1.2)
+
+plt.grid(True)
 
 plt.show()

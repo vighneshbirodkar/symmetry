@@ -37,7 +37,6 @@ for idx in range(1,177):
     true_x2, true_y2 = mat['segments'][0][0][1].astype(np.int)
     true_line = utils.Line(true_x1, true_y1, true_x2, true_y2)
 
-
     img_in = io.imread(name)
     img_in = util.img_as_float(img_in)
 
@@ -45,12 +44,24 @@ for idx in range(1,177):
         img_in = color.gray2rgb(img_in)
 
     img_in = img_in[:, :, 0:3]
-
     img = color.rgb2gray(img_in)
-    sym, d, angle_bins = symmetry.symmetry(img, min_dist=2, max_dist=80)
+
+    mreal, mimag = symmetry.compute_morlet(img, num_angles=16)
+    sym, angle_bins = symmetry.symmetry(img, min_dist=2, max_dist=80,
+                                           num_angles=16,
+                                           morlet_real=mreal,
+                                           morlet_imag=mimag)
 
 
-    lines = utils.line_coords(img_in, sym, d, angle_bins, num_lines=N, drange = 20)
+    lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 20)
+    for l in lines:
+
+        x,y = symmetry.comput_center(img,min_dist=2, max_dist=80,num_angles=16,
+                               morlet_real=mreal, morlet_imag=mimag,
+                               r = l.r, angle=l.theta)
+        l.cx = x
+        l.cy = y
+
 
     tp = 0
     fp = 0
@@ -73,9 +84,10 @@ for idx in range(1,177):
         for cur_line in subset:
             k = 0
             while k < len(true_lines):
-                dist = true_lines[k].dist_to_inf_line(cur_line)
+                dist = true_lines[k].dist_centre_to_centre(cur_line)
                 angle_diff_deg = true_lines[k].angle_diff_inf_line_deg(cur_line)
                 #print('Thresh = ', 0.2*true_lines[k].len)
+                #print('Dist = ', dist)
                 #print(dist, angle_diff_deg, dist < 0.2*true_lines[k].len, angle_diff_deg < 10)
                 if dist < 0.2*true_lines[k].len and angle_diff_deg < 10:
                     tp += 1
@@ -108,7 +120,6 @@ for idx in range(1,177):
         fname = '/home/vighnesh/images/symmetry/out/I%03d.png' % idx
         io.imsave(fname, img_in)
 
-
     #plt.imshow(img_in)
     #plt.show()
 
@@ -120,6 +131,7 @@ print('not found = ', not_found)
 
 print(TP/(TP + FP))
 print(TP/(TP + FN))
+
 plt.plot(TP/(TP + FN), TP/(TP + FP), marker='o')
 plt.axes().set_xlim(0,1.2)
 plt.axes().set_ylim(0,1.2)

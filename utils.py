@@ -8,7 +8,7 @@ def angle_diff(a1, a2):
     return abs(min(a1 - a2, 180 - (a1 - a2)))
 
 
-def line_coords(img, sym, dist, angle_bins, drange=10, arange=2, num_lines=1):
+def line_coords(img, sym, angle_bins, drange=10, arange=2, num_lines=1):
     img = img[:,:,0:3]
     #sym = sym.copy()
 
@@ -77,6 +77,9 @@ class Line(object):
         #print('other angle =', (line.theta - np.pi/2)*180/np.pi)
         return angle_diff(self.angle*180/np.pi, (line.theta)*180/np.pi)
 
+    def dist_centre_to_centre(self, line):
+        return np.hypot(self.cx - line.cx, self.cy - line.cy)
+
 
 class InfLine(object):
     def __init__(self, r, theta, img):
@@ -110,11 +113,20 @@ class InfLine(object):
         self.x2 = x2
         self.y1 = y1
         self.y2 = y2
+        self.cx = None
+        self.cy = None
+
 
     def draw(self,img, color=red):
 
         line = draw.line(self.y1, self.x1, self.y2, self.x2)
         draw.set_color(img, line, color)
+
+        if self.cx and self.cy:
+            centre = draw.circle(self.cy, self.cx, 3)
+            draw.set_color(img, centre, color)
+
+
 
     def dist_to_point(self, x, y):
         return abs(dist_point_line(x, y, self.x1, self.y1, self.x2, self.y2))

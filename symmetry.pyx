@@ -1,6 +1,6 @@
 #cython: cdivision=False
 #cython: nonecheck=False
-#cython: boundscheck=False
+#cython: boundscheck=True
 #cython: wraparound=False
 
 import numpy as np
@@ -23,13 +23,28 @@ cdef inline cnp.float_t adjust_angle(cnp.float_t angle):
     cdef cnp.float_t floor_index = floor(angle/PI)
     return angle - floor_index*PI
 
-def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
-             num_angles = 16, debug_flag=False):
+
+def compute_morlet(img_arr, num_angles=16, width=16, sigma=2.0):
+
+
+    angles = np.pi*(1.0/num_angles)*np.arange(num_angles)
+    j_real_arr = np.zeros((img_arr.shape[0], img_arr.shape[1], num_angles), dtype=np.float)
+    j_imag_arr = np.zeros((img_arr.shape[0], img_arr.shape[1], num_angles), dtype=np.float)
+
+    for idx in range(num_angles):
+        angle = angles[idx]
+        kernel = morlet.kernel(width, sigma, angle)
+        convolve(img_arr.copy(), np.real(kernel), j_real_arr[:, :, idx])
+        convolve(img_arr.copy(), np.imag(kernel), j_imag_arr[:, :, idx])
+
+    return j_real_arr, j_imag_arr
+
+def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
+             num_angles, debug_flag=False):
 
     cdef Py_ssize_t phi_idx, idx=0, theta_idx=0
     cdef Py_ssize_t xmax, ymax, rho_max, cx, cy, x, y ,x1 ,y1,d, theta_i, theta1_i
     cdef cnp.int_t num_phi = num_angles
-    cdef cnp.float_t sigma = morlet_sigma
     cdef cnp.float_t phi = 0, phi_m_pi_by_2
     cdef cnp.float_t delta_theta = 0
     cdef cnp.float_t theta, theta1
@@ -47,35 +62,20 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
     cdef Py_ssize_t dmin=min_dist, dmax = max_dist
     cdef cnp.float_t ms_real, ms_imag
 
-    d_sym_real_arr = np.zeros(dmax)
-    d_sym_imag_arr = np.zeros(dmax)
-
-    d_sym_real = d_sym_real_arr
-    d_sym_imag = d_sym_imag_arr
 
     xmax = img.shape[1]
     ymax = img.shape[0]
 
     rho_max = <Py_ssize_t>(sqrt(xmax*xmax + ymax*ymax) + 1)
 
-    j_real_arr = np.zeros((ymax, xmax, num_phi), dtype=np.float)
-    j_imag_arr = np.zeros((ymax, xmax, num_phi), dtype=np.float)
-    j_real = j_real_arr
-    j_imag = j_imag_arr
+    j_real = morlet_real
+    j_imag = morlet_imag
 
     sym_real_arr = np.zeros((rho_max*2, num_phi))
     sym_imag_arr = np.zeros((rho_max*2, num_phi))
 
     sym_real = sym_real_arr
     sym_imag = sym_imag_arr
-
-
-    while idx < num_phi:
-        kernel = morlet.kernel(width, sigma, phi_list[idx])
-        convolve(img_arr.copy(), np.real(kernel), j_real_arr[:, :, idx])
-        convolve(img_arr.copy(), np.imag(kernel), j_imag_arr[:, :, idx])
-        #io.imsave('out/real_' + str(idx) + '.png',morlet.normalize(j_real_arr[:, :, idx]) )
-        idx += 1
 
     if debug:
         print('Pre Computing Done')
@@ -90,7 +90,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
 
                 rho = <Py_ssize_t>(cx*cos(phi - PI_BY_2) + cy*sin(phi - PI_BY_2))
 
-
                 theta_idx = 0
                 while theta_idx < num_theta:
 
@@ -101,7 +100,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
 
                     theta_i = <Py_ssize_t>(theta*num_phi/PI)
                     theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
-
 
                     d = dmin
                     while d < dmax:
@@ -131,13 +129,107 @@ def symmetry(img_arr, min_dist, max_dist, morlet_sigma=2.0,morlet_width=16,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        sym_real[rho + rho_max, phi_idx] += ms_real + .0005/(d*d)
-                        sym_imag[rho + rho_max, phi_idx] += ms_imag + .0005/(d*d)
+                        sym_real[rho + rho_max, phi_idx] += ms_real
+                        sym_imag[rho + rho_max, phi_idx] += ms_imag
                         d += 1
 
                     theta_idx += 1
 
 
     sym_mag = sym_real_arr**2 + sym_imag_arr**2
-    d_mag = d_sym_real_arr**2 + d_sym_imag_arr**2
-    return sym_mag, d_mag, np.array(phi_list)
+    return sym_mag, np.array(phi_list)
+
+def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
+                  num_angles, r, angle):
+
+    cdef Py_ssize_t t, theta_idx, theta1_idx
+    cdef Py_ssize_t xmax = img_arr.shape[1]
+    cdef Py_ssize_t ymax = img_arr.shape[0]
+    cdef Py_ssize_t rho_max = <Py_ssize_t>(sqrt(xmax*xmax + ymax*ymax) + 1)
+    cdef Py_ssize_t cx, cy
+    cdef Py_ssize_t x, y
+    cdef Py_ssize_t rho = <Py_ssize_t>r
+    cdef cnp.float_t phi = angle
+    cdef Py_ssize_t num_phi = num_angles
+    cdef cnp.float_t[:,::1] debug_img = np.zeros_like(img_arr, dtype=np.float)
+    cdef cnp.float_t weighted_sum = 0
+    cdef cnp.float_t weight_sum = 0
+    cdef Py_ssize_t dmin = min_dist
+    cdef Py_ssize_t dmax = max_dist
+    cdef Py_ssize_t d
+    cdef Py_ssize_t num_theta=3
+    cdef cnp.float_t[::1] theta_list = np.array([-np.pi/4, 0, np.pi/4])
+    cdef cnp.float_t theta, theta1, delta_theta
+    cdef cnp.float_t[:,:,::1] j_real, j_imag
+    cdef cnp.float_t ms_real, ms_imag
+    cdef cnp.float_t weight, avg_t, start, end
+    cdef cnp.float_t[::1] weights
+    cdef cnp.float_t[::1] phi_list = np.array([angle - np.pi/16, angle, angle + np.pi/16])
+
+    weight_array = np.zeros(rho_max*2)
+    weights = weight_array
+
+    j_real = morlet_real
+    j_imag = morlet_imag
+
+    cx = <Py_ssize_t>(rho*cos(phi - PI_BY_2))
+    cy = <Py_ssize_t>(rho*sin(phi - PI_BY_2))
+
+    for t in range(-rho_max, rho_max):
+        x = <Py_ssize_t>(cx - t*cos(PI - phi))
+        y = <Py_ssize_t>(cy + t*sin(PI - phi))
+
+        for theta_idx in range(num_theta):
+            delta_theta = theta_list[theta_idx]
+
+            theta = (phi - PI_BY_2 + delta_theta)%PI
+            theta1 = (2*phi - theta)%PI
+
+            theta_i = <Py_ssize_t>(theta*num_phi/PI)
+            theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
+
+            for d in range(dmin, dmax):
+                x1 = <Py_ssize_t>(x - d*cos(theta - PI_BY_2))
+                y1 = <Py_ssize_t>(y - d*sin(theta - PI_BY_2))
+                x2 = <Py_ssize_t>(x + d*cos(theta - PI_BY_2))
+                y2 = <Py_ssize_t>(y + d*sin(theta - PI_BY_2))
+
+                if x1 >= xmax or y1 >= ymax or x2 >= xmax or y2 >= ymax:
+                    continue
+
+                if x1 < 0 or y1 < 0 or x2 < 0 or y2 < 0:
+                    continue
+
+                ms_real = j_real[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
+                ms_real += j_imag[y1, x1, theta_i]*j_imag[y2, x2, theta1_i]
+
+                ms_imag = -j_real[y1, x1, theta_i]*j_imag[y2, x2, theta1_i]
+                ms_imag += j_imag[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
+
+                weight = ms_real*ms_real + ms_imag*ms_imag
+                weights[t + rho_max] = weight + .7/(d*d)
+                #weighted_sum += t*weight
+                #weight_sum += weight
+                debug_img[y1, x1] += weight
+                debug_img[y2, x2] += weight
+
+
+    weight_array = np.sqrt(weight_array)
+    t_array = np.arange(weight_array.shape[0])
+    avg_t = np.sum(weight_array*t_array)/np.sum(weight_array) - rho_max
+    #plt.figure()
+    x = <Py_ssize_t>(cx - avg_t*cos(PI - phi))
+    y = <Py_ssize_t>(cy + avg_t*sin(PI - phi))
+
+
+    #plt.plot(weight_array)
+    #plt.show()
+
+    n = weight_array.shape[0]
+
+
+
+    #print(x,y)
+    return int(x), int(y)
+    #plt.imshow(np.array(debug_img), cmap='gray')
+    #plt.show()

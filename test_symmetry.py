@@ -25,16 +25,19 @@ FN = np.zeros(N, dtype=np.float)
 not_found = []
 
 DEBUG = True
+mat = loadmat('/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/_data.mat')
+data = mat['data'].astype(np.int)
 
-for idx in range(1,177):
+for idx in range(1,40):
 
-    name = '/home/vighnesh/images/symmetry/S/I%03d.png' % idx
+    name = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/I_%03d.png' % idx
     mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx
-    mat = loadmat(mat_name)
+    #mat = loadmat(mat_name)
     print('Processing : ' + name)
 
-    true_x1, true_y1 = mat['segments'][0][0][0].astype(np.int)
-    true_x2, true_y2 = mat['segments'][0][0][1].astype(np.int)
+    true_x1, true_y1, true_x2, true_y2 = data[idx-1]
+    #true_x1, true_y1 = mat['segments'][0][0][0].astype(np.int)
+    #true_x2, true_y2 = mat['segments'][0][0][1].astype(np.int)
     true_line = utils.Line(true_x1, true_y1, true_x2, true_y2)
 
     img_in = io.imread(name)
@@ -46,21 +49,22 @@ for idx in range(1,177):
     img_in = img_in[:, :, 0:3]
     img = color.rgb2gray(img_in)
 
-    mreal, mimag = symmetry.compute_morlet(img, num_angles=16)
-    sym, angle_bins = symmetry.symmetry(img, min_dist=2, max_dist=80,
-                                           num_angles=16,
+    mreal, mimag = symmetry.compute_morlet(img, num_angles=32, sigma=2.0)
+    w = max(img.shape)
+    sym, angle_bins = symmetry.symmetry(img, min_dist=1, max_dist=100,
+                                           num_angles=32,
                                            morlet_real=mreal,
                                            morlet_imag=mimag)
 
 
     lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 20)
-    for l in lines:
-
-        x,y = symmetry.comput_center(img,min_dist=2, max_dist=80,num_angles=16,
-                               morlet_real=mreal, morlet_imag=mimag,
-                               r = l.r, angle=l.theta)
-        l.cx = x
-        l.cy = y
+    # for l in lines:
+    #
+    #     x,y = symmetry.comput_center(img,min_dist=0, max_dist=80,num_angles=16,
+    #                            morlet_real=mreal, morlet_imag=mimag,
+    #                            r = l.r, angle=l.theta)
+    #     l.cx = x
+    #     l.cy = y
 
 
     tp = 0
@@ -70,6 +74,7 @@ for idx in range(1,177):
         #print(str(i + 1) + 'Line')
         subset = lines[0:i+1]
 
+        true_line.draw(img_in, white)
         if DEBUG:
             lines[i].draw(img_in, color_list[i])
         fn = 1
@@ -84,7 +89,7 @@ for idx in range(1,177):
         for cur_line in subset:
             k = 0
             while k < len(true_lines):
-                dist = true_lines[k].dist_centre_to_centre(cur_line)
+                dist = true_lines[k].dist_to_inf_line(cur_line)
                 angle_diff_deg = true_lines[k].angle_diff_inf_line_deg(cur_line)
                 #print('Thresh = ', 0.2*true_lines[k].len)
                 #print('Dist = ', dist)
@@ -107,7 +112,7 @@ for idx in range(1,177):
             #print("Dist = ",dist,"angle = ", angle*180/np.pi)
 
         #print(tp,fp,fn)
-        assert tp <= 2
+        assert tp <= 1
         assert fp >= 0
         assert fn >= 0
         TP[i] += tp

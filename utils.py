@@ -16,6 +16,7 @@ def line_coords(img, sym, angle_bins, drange=10, arange=2, num_lines=1):
 
     for i in range(num_lines):
         r, t = np.unravel_index(np.argmax(sym), sym.shape)
+        #print('r = ', r,  't = ', t)
         offset = sym.shape[0]/2
         line = InfLine(r - offset, angle_bins[t], img)
 
@@ -79,6 +80,15 @@ class Line(object):
 
     def dist_centre_to_centre(self, line):
         return np.hypot(self.cx - line.cx, self.cy - line.cy)
+
+    def draw(self,img, color=red):
+
+        line = draw.line(self.y1, self.x1, self.y2, self.x2)
+        draw.set_color(img, line, color)
+
+        if self.cx and self.cy:
+            centre = draw.circle(self.cy, self.cx, 3)
+            draw.set_color(img, centre, color)
 
 
 class InfLine(object):

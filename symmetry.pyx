@@ -11,7 +11,7 @@ from scipy.ndimage.filters import convolve
 from cython.parallel import prange
 
 cimport numpy as cnp
-from libc.math cimport sqrt, sin, cos, floor, round, abs
+from libc.math cimport sqrt, sin, cos, floor, round, abs, log
 
 
 cdef cnp.float_t PI_BY_2 = np.pi/2
@@ -59,8 +59,10 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cdef cnp.float_t[:, ::1] img = np.ascontiguousarray(img_arr)
     cdef cnp.float_t[:, ::1] sym_real
     cdef cnp.float_t[:, ::1] sym_imag
+    cdef cnp.float_t sym_max,
     cdef Py_ssize_t dmin=min_dist, dmax = max_dist
     cdef cnp.float_t ms_real, ms_imag
+    cdef cnp.float_t[:,::1] debug_map = np.zeros_like(img_arr, dtype=np.float)
 
 
     xmax = img.shape[1]
@@ -90,19 +92,37 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
 
                 rho = <Py_ssize_t>(cx*cos(phi - PI_BY_2) + cy*sin(phi - PI_BY_2))
 
-                theta_idx = 0
-                while theta_idx < num_theta:
+                d = dmin
+                while d < dmax:
 
-                    delta_theta = theta_list[theta_idx]
 
-                    theta = (phi - PI_BY_2 + delta_theta)%PI
-                    theta1 = (2*phi - theta)%PI
+                    x = <Py_ssize_t>(cx - d*cos(phi_m_pi_by_2))
+                    y = <Py_ssize_t>(cy - d*sin(phi_m_pi_by_2))
+                    x1 = <Py_ssize_t>(cx + d*cos(phi_m_pi_by_2))
+                    y1 = <Py_ssize_t>(cy + d*sin(phi_m_pi_by_2))
 
-                    theta_i = <Py_ssize_t>(theta*num_phi/PI)
-                    theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
+                    if x < 0 or y < 0 or x1 < 0 or y1 < 0:
+                        d += 1
+                        continue
 
-                    d = dmin
-                    while d < dmax:
+                    if x >= xmax or y >= ymax or x1 >= xmax or y1 >= ymax:
+                        d += 1
+                        continue
+
+
+                    theta_idx = 0
+                    sym_max = 0
+                    while theta_idx < num_theta:
+
+                        delta_theta = theta_list[theta_idx]
+
+                        theta = (phi - PI_BY_2 + delta_theta)%PI
+                        theta1 = (phi + PI_BY_2 - delta_theta)%PI
+
+                        theta_i = <Py_ssize_t>(theta*num_phi/PI)
+                        theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
+
+
 
                         # If `d` could be valid for any angle, `d` should
                         # not be allowed to vote for any angle
@@ -110,18 +130,6 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                         #    d += 1
                         #    continue
 
-                        x = <Py_ssize_t>(cx - d*cos(phi_m_pi_by_2))
-                        y = <Py_ssize_t>(cy - d*sin(phi_m_pi_by_2))
-                        x1 = <Py_ssize_t>(cx + d*cos(phi_m_pi_by_2))
-                        y1 = <Py_ssize_t>(cy + d*sin(phi_m_pi_by_2))
-
-                        if x < 0 or y < 0 or x1 < 0 or y1 < 0:
-                            d += 1
-                            continue
-
-                        if x >= xmax or y >= ymax or x1 >= xmax or y1 >= ymax:
-                            d += 1
-                            continue
 
                         ms_real = j_real[y, x, theta_i]*j_real[y1, x1, theta1_i]
                         ms_real += j_imag[y, x, theta_i]*j_imag[y1, x1, theta1_i]
@@ -131,11 +139,21 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
 
                         sym_real[rho + rho_max, phi_idx] += ms_real
                         sym_imag[rho + rho_max, phi_idx] += ms_imag
-                        d += 1
 
-                    theta_idx += 1
+                        #if (rho + rho_max ) == 241 and phi_idx == 10:
+                        #    debug_map[y1, x1] =  ms_real**2 + ms_imag**2
+                        #    debug_map[y, x] = ms_real**2 + ms_imag**2
+
+                        theta_idx += 1
+
+                    d += 1
 
 
+
+    #io.imsave('/home/vighnesh/Desktop/debug.png', morlet.normalize(np.array(debug_map)))
+
+    #plt.imshow(np.array(debug_map), cmap='gray')
+    #plt.show()
     sym_mag = sym_real_arr**2 + sym_imag_arr**2
     return sym_mag, np.array(phi_list)
 

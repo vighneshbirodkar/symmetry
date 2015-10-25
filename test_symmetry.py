@@ -28,7 +28,7 @@ DEBUG = True
 mat = loadmat('/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/_data.mat')
 data = mat['data'].astype(np.int)
 
-for idx in range(1,41):
+for idx in range(1, 41):
 
     name = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/I_%03d.png' % idx
     mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx
@@ -138,8 +138,10 @@ print(TP/(TP + FP))
 print(TP/(TP + FN))
 
 plt.plot(TP/(TP + FN), TP/(TP + FP), marker='o')
-plt.axes().set_xlim(0,1.2)
-plt.axes().set_ylim(0,1.2)
+plt.axes().set_xlim(0,1.1)
+plt.axes().set_ylim(0,1.1)
+plt.xticks(np.arange(0,1.1,0.1))
+plt.yticks(np.arange(0,1.1,0.1))
 
 plt.grid(True)
 

@@ -28,7 +28,7 @@ DEBUG = True
 mat = loadmat('/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/_data.mat')
 data = mat['data'].astype(np.int)
 
-for idx in range(1,40):
+for idx in range(1,41):
 
     name = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/single/I_%03d.png' % idx
     mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx
@@ -51,20 +51,20 @@ for idx in range(1,40):
 
     mreal, mimag = symmetry.compute_morlet(img, num_angles=32, sigma=2.0)
     w = max(img.shape)
-    sym, angle_bins = symmetry.symmetry(img, min_dist=1, max_dist=100,
+    sym, angle_bins = symmetry.symmetry(img, min_dist=1, max_dist=w/2,
                                            num_angles=32,
                                            morlet_real=mreal,
                                            morlet_imag=mimag)
 
 
     lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 20)
-    # for l in lines:
-    #
-    #     x,y = symmetry.comput_center(img,min_dist=0, max_dist=80,num_angles=16,
-    #                            morlet_real=mreal, morlet_imag=mimag,
-    #                            r = l.r, angle=l.theta)
-    #     l.cx = x
-    #     l.cy = y
+    for l in lines:
+
+        x,y = symmetry.comput_center(img,min_dist=1, max_dist=w/2,num_angles=32,
+                               morlet_real=mreal, morlet_imag=mimag,
+                               r = l.r, angle=l.theta)
+        l.cx = x
+        l.cy = y
 
 
     tp = 0
@@ -89,7 +89,7 @@ for idx in range(1,40):
         for cur_line in subset:
             k = 0
             while k < len(true_lines):
-                dist = true_lines[k].dist_to_inf_line(cur_line)
+                dist = true_lines[k].dist_centre_to_centre(cur_line)
                 angle_diff_deg = true_lines[k].angle_diff_inf_line_deg(cur_line)
                 #print('Thresh = ', 0.2*true_lines[k].len)
                 #print('Dist = ', dist)

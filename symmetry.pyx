@@ -175,14 +175,13 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cdef Py_ssize_t dmin = min_dist
     cdef Py_ssize_t dmax = max_dist
     cdef Py_ssize_t d
-    cdef Py_ssize_t num_theta=3
-    cdef cnp.float_t[::1] theta_list = np.array([-np.pi/4, 0, np.pi/4])
+    cdef Py_ssize_t num_theta=5
+    cdef cnp.float_t[::1] theta_list = np.array([-np.pi/3,-np.pi/6, 0, np.pi/6,np.pi/3])
     cdef cnp.float_t theta, theta1, delta_theta
     cdef cnp.float_t[:,:,::1] j_real, j_imag
     cdef cnp.float_t ms_real, ms_imag
     cdef cnp.float_t weight, avg_t, start, end
     cdef cnp.float_t[::1] weights
-    cdef cnp.float_t[::1] phi_list = np.array([angle - np.pi/16, angle, angle + np.pi/16])
 
     weight_array = np.zeros(rho_max*2)
     weights = weight_array
@@ -193,9 +192,12 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cx = <Py_ssize_t>(rho*cos(phi - PI_BY_2))
     cy = <Py_ssize_t>(rho*sin(phi - PI_BY_2))
 
+    #print('phi = ', phi*180/PI)
+
     for t in range(-rho_max, rho_max):
         x = <Py_ssize_t>(cx - t*cos(PI - phi))
         y = <Py_ssize_t>(cy + t*sin(PI - phi))
+
 
         for theta_idx in range(num_theta):
             delta_theta = theta_list[theta_idx]
@@ -203,14 +205,18 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
             theta = (phi - PI_BY_2 + delta_theta)%PI
             theta1 = (2*phi - theta)%PI
 
+            #print(theta*180/PI, theta1*180/PI)
+
             theta_i = <Py_ssize_t>(theta*num_phi/PI)
             theta1_i = <Py_ssize_t>(theta1*num_phi/PI)
 
             for d in range(dmin, dmax):
-                x1 = <Py_ssize_t>(x - d*cos(theta - PI_BY_2))
-                y1 = <Py_ssize_t>(y - d*sin(theta - PI_BY_2))
-                x2 = <Py_ssize_t>(x + d*cos(theta - PI_BY_2))
-                y2 = <Py_ssize_t>(y + d*sin(theta - PI_BY_2))
+                x1 = <Py_ssize_t>(x - d*cos(phi - PI_BY_2))
+                y1 = <Py_ssize_t>(y - d*sin(phi - PI_BY_2))
+                x2 = <Py_ssize_t>(x + d*cos(phi - PI_BY_2))
+                y2 = <Py_ssize_t>(y + d*sin(phi - PI_BY_2))
+
+                #print(x1,y1,x2,y2)
 
                 if x1 >= xmax or y1 >= ymax or x2 >= xmax or y2 >= ymax:
                     continue
@@ -228,8 +234,10 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                 weights[t + rho_max] = weight #+ .7/(d*d)
                 #weighted_sum += t*weight
                 #weight_sum += weight
-                debug_img[y1, x1] += weight
-                debug_img[y2, x2] += weight
+                #if d==10:
+                #    debug_img[cy,cx] = 1
+                    #debug_img[y1, x1] = 1
+                    #debug_img[y2, x2] = 1
 
 
     weight_array = np.sqrt(weight_array)
@@ -240,6 +248,7 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     y = <Py_ssize_t>(cy + avg_t*sin(PI - phi))
 
 
+    #plt.imshow(np.array(debug_img), cmap='gray')
     #plt.plot(weight_array)
     #plt.show()
 

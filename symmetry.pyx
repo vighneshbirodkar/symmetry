@@ -231,7 +231,8 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                 ms_imag += j_imag[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
 
                 weight = ms_real*ms_real + ms_imag*ms_imag
-                weights[t + rho_max] = weight #+ .7/(d*d)
+                #if weight > weights[t + rho_max]:
+                weights[t + rho_max] += weight + 0.7/(d*d)
                 #weighted_sum += t*weight
                 #weight_sum += weight
                 #if d==10:

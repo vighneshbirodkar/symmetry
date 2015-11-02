@@ -1,6 +1,9 @@
 import numpy as np
 from skimage.color.rgb_colors import *
 from skimage import draw
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
 
 def angle_diff(a1, a2):
     a1 = a1%180
@@ -24,15 +27,20 @@ def line_coords(img, sym, angle_bins, drange=10, arange=2, num_lines=1):
 
         dmin = np.clip(r - drange - 1, 0, sym.shape[0])
         dmax = np.clip(r + drange + 1, 0, sym.shape[0])
-        #dmin = int(round(dmin))
-        #dmax = int(round(dmax))
-        #print("dmin = ", dmin)
-        #print("dmax = ", dmax)
 
         amin = np.clip(t - arange - 1, 0, sym.shape[1])
         amax = np.clip(t + arange + 1, 0, sym.shape[1])
 
+        # fig = plt.figure()
+        # ax = fig.gca(projection='3d')
+        # x = np.arange(0, sym.shape[0])
+        # y = np.arange(0, sym.shape[1])
+        # xx, yy = np.meshgrid(y, x)
+        # surf = ax.plot_surface(xx, yy, sym, rstride=1, cstride=1, linewidth=0, antialiased=False)
+        # plt.show()
+
         sym[dmin:dmax, amin:amax] = 0
+
 
     return lines
 

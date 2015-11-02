@@ -128,8 +128,8 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        sym_real[rho + rho_max, phi_idx] += ms_real#+ 0.1/(d*d)
-                        sym_imag[rho + rho_max, phi_idx] += ms_imag#+ 0.1/(d*d)
+                        sym_real[rho + rho_max, phi_idx] += ms_real+ 0.01/(1 + d*d)
+                        sym_imag[rho + rho_max, phi_idx] += ms_imag+ 0.01/(1 + d*d)
 
                         #if (rho + rho_max ) == 241 and phi_idx == 10:
                         #    debug_map[y1, x1] =  ms_real**2 + ms_imag**2
@@ -223,7 +223,7 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
 
                 weight = ms_real*ms_real + ms_imag*ms_imag
                 #if weight > weights[t + rho_max]:
-                weights[t + rho_max] += weight  + 0.7/(d*d)
+                weights[t + rho_max] += weight  + 0.7/(1 + d*d)
                 #weighted_sum += t*weight
                 #weight_sum += weight
                 #if d==10:

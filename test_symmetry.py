@@ -68,16 +68,16 @@ for idx in range(1, 31):
 
     mreal, mimag = symmetry.compute_morlet(img, num_angles=32, sigma=2.0)
     w = max(img.shape)
-    sym, angle_bins = symmetry.symmetry(img, min_dist=1, max_dist=w/2,
+    sym, angle_bins = symmetry.symmetry(img, min_dist=0, max_dist=w/2,
                                            num_angles=32,
                                            morlet_real=mreal,
                                            morlet_imag=mimag)
 
 
-    lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 50)
+    lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 10, arange=2)
     for l in lines:
 
-        x,y = symmetry.comput_center(img,min_dist=1, max_dist=w/2,num_angles=32,
+        x,y = symmetry.comput_center(img,min_dist=0, max_dist=w/2,num_angles=32,
                                morlet_real=mreal, morlet_imag=mimag,
                                r = l.r, angle=l.theta)
         l.cx = x

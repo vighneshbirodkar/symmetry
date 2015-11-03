@@ -11,7 +11,7 @@ from scipy.ndimage.filters import convolve
 from cython.parallel import prange
 
 cimport numpy as cnp
-from libc.math cimport sqrt, sin, cos, floor, round, abs, log
+from libc.math cimport sqrt, sin, cos, floor, round, abs, log, exp
 
 
 cdef cnp.float_t PI_BY_2 = np.pi/2
@@ -63,6 +63,8 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cdef Py_ssize_t dmin=min_dist, dmax = max_dist
     cdef cnp.float_t ms_real, ms_imag
     cdef cnp.float_t[:,::1] debug_map = np.zeros_like(img_arr, dtype=np.float)
+    cdef cnp.float_t phase, phase_imag, phase_real, gaussian
+
 
 
     xmax = img.shape[1]
@@ -128,8 +130,12 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        sym_real[rho + rho_max, phi_idx] += ms_real+ 0.01/(1 + d*d)
-                        sym_imag[rho + rho_max, phi_idx] += ms_imag+ 0.01/(1 + d*d)
+                        phase = (d/(1.0*dmax))*TWO_PI
+                        phase_real = cos(phase)
+                        phase_imag = sin(phase)
+                        #gaussian = exp(-(d*d)/(50*50))
+                        sym_real[rho + rho_max, phi_idx] += .01/(1 + d*d) + ((ms_real*phase_real) - (phase_imag*ms_imag))
+                        sym_imag[rho + rho_max, phi_idx] += .01/(1 + d*d) + ((ms_real*phase_imag) + (ms_imag*phase_real))
 
                         #if (rho + rho_max ) == 241 and phi_idx == 10:
                         #    debug_map[y1, x1] =  ms_real**2 + ms_imag**2
@@ -170,7 +176,7 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cdef cnp.float_t[::1] theta_list = np.array([-np.pi/3,-np.pi/6, 0, np.pi/6,np.pi/3])
     cdef cnp.float_t theta, theta1, delta_theta
     cdef cnp.float_t[:,:,::1] j_real, j_imag
-    cdef cnp.float_t ms_real, ms_imag
+    cdef cnp.float_t ms_real, ms_imag, real, imag
     cdef cnp.float_t weight, avg_t, start, end
     cdef cnp.float_t[::1] weights
 
@@ -221,9 +227,15 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                 ms_imag = -j_real[y1, x1, theta_i]*j_imag[y2, x2, theta1_i]
                 ms_imag += j_imag[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
 
-                weight = ms_real*ms_real + ms_imag*ms_imag
+                # phase = (d/(1.0*dmax))*TWO_PI
+                # phase_real = cos(phase)
+                # phase_imag = sin(phase)
+                #
+                # real += .1/(1 + d*d) + ((ms_real*phase_real) - (phase_imag*ms_imag))
+                # imag += .1/(1 + d*d) + ((ms_real*phase_imag) + (ms_imag*phase_real))
+
                 #if weight > weights[t + rho_max]:
-                weights[t + rho_max] += weight  + 0.7/(1 + d*d)
+                weights[t + rho_max] += ms_real**2 + ms_imag**2
                 #weighted_sum += t*weight
                 #weight_sum += weight
                 #if d==10:

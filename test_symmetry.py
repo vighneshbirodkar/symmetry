@@ -17,7 +17,7 @@ color_list = [red, blue, green, yellow, aqua, orange, pink, purple, coral, indig
 fp = 0
 tp = 0
 fn = 0
-N = 10
+N = 3
 
 FP = np.zeros(N, dtype=np.float)
 TP = np.zeros(N, dtype=np.float)
@@ -30,7 +30,7 @@ BASE_PATH = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testin
 mat = loadmat(BASE_PATH + '_data.mat')
 data = mat['data']
 
-for idx in range(1, 31):
+for idx in range(1, 2):
 
     name = BASE_PATH + 'I_%03d.png' % idx
     #mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx

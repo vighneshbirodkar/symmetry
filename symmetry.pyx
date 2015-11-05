@@ -130,16 +130,16 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                         ms_imag = -j_real[y, x, theta_i]*j_imag[y1, x1, theta1_i]
                         ms_imag += j_imag[y, x, theta_i]*j_real[y1, x1, theta1_i]
 
-                        phase = (d/(1.0*dmax))*TWO_PI
+                        phase = (d/(2.0*dmax))*TWO_PI
                         phase_real = cos(phase)
                         phase_imag = sin(phase)
                         #gaussian = exp(-(d*d)/(50*50))
-                        sym_real[rho + rho_max, phi_idx] += .01/(1 + d*d) + ((ms_real*phase_real) - (phase_imag*ms_imag))
-                        sym_imag[rho + rho_max, phi_idx] += .01/(1 + d*d) + ((ms_real*phase_imag) + (ms_imag*phase_real))
+                        sym_real[rho + rho_max, phi_idx] += ms_real*phase_real + 0.008/(1 + d*d)
+                        sym_imag[rho + rho_max, phi_idx] += ms_real*phase_imag + 0.008/(1 + d*d)
 
-                        #if (rho + rho_max ) == 241 and phi_idx == 10:
-                        #    debug_map[y1, x1] =  ms_real**2 + ms_imag**2
-                        #    debug_map[y, x] = ms_real**2 + ms_imag**2
+                        # if (rho + rho_max ) == 329 and phi_idx == 17:
+                        #     debug_map[y1, x1] =  ms_real**2 + ms_imag**2
+                        #     debug_map[y, x] = ms_real**2 + ms_imag**2
 
                         theta_idx += 1
 
@@ -155,7 +155,7 @@ def symmetry(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     return sym_mag, np.array(phi_list)
 
 def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
-                  num_angles, r, angle):
+                  num_angles, r, angle, padding=0):
 
     cdef Py_ssize_t t, theta_idx, theta1_idx
     cdef Py_ssize_t xmax = img_arr.shape[1]
@@ -179,6 +179,7 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
     cdef cnp.float_t ms_real, ms_imag, real, imag
     cdef cnp.float_t weight, avg_t, start, end
     cdef cnp.float_t[::1] weights
+    cdef Py_ssize_t pad = padding
 
     weight_array = np.zeros(rho_max*2)
     weights = weight_array
@@ -215,10 +216,10 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
 
                 #print(x1,y1,x2,y2)
 
-                if x1 >= xmax or y1 >= ymax or x2 >= xmax or y2 >= ymax:
+                if x1 >= xmax - pad or y1 >= ymax - pad or x2 >= xmax - pad or y2 >= ymax - pad:
                     continue
 
-                if x1 < 0 or y1 < 0 or x2 < 0 or y2 < 0:
+                if x1 < pad or y1 < pad or x2 < pad or y2 < pad:
                     continue
 
                 ms_real = j_real[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
@@ -227,12 +228,12 @@ def comput_center(img_arr, min_dist, max_dist, morlet_real, morlet_imag,
                 ms_imag = -j_real[y1, x1, theta_i]*j_imag[y2, x2, theta1_i]
                 ms_imag += j_imag[y1, x1, theta_i]*j_real[y2, x2, theta1_i]
 
-                # phase = (d/(1.0*dmax))*TWO_PI
-                # phase_real = cos(phase)
-                # phase_imag = sin(phase)
+                #phase = (d/(2.0*dmax))*TWO_PI
+                #phase_real = cos(phase)
+                #phase_imag = sin(phase)
                 #
-                # real += .1/(1 + d*d) + ((ms_real*phase_real) - (phase_imag*ms_imag))
-                # imag += .1/(1 + d*d) + ((ms_real*phase_imag) + (ms_imag*phase_real))
+                real += .2/(1 + d*d) + ms_real
+                imag += .2/(1 + d*d) + ms_imag
 
                 #if weight > weights[t + rho_max]:
                 weights[t + rho_max] += ms_real**2 + ms_imag**2

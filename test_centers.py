@@ -3,39 +3,35 @@ from skimage.color.rgb_colors import *
 import symmetry
 from matplotlib import pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
 from skimage.util.colormap import viridis
 import morlet
-import time
 import utils
+from skimage import util
 from scipy.io import loadmat
 
-color_list = [red, blue, green, yellow, aqua, orange, pink, purple, coral, indigo ]
-
-
-fp = 0
-tp = 0
-fn = 0
-N = 10
+color_list = [red, blue, green, yellow, aqua, orange, pink, purple, coral, indigo ] + [black]*20
+BASE_PATH = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/multiple/'
+DATA_PATH = '/home/vighnesh/images/marcelo2/'
+mat = loadmat(BASE_PATH + '_data.mat')
+data = mat['data']
+PAD = 20
+N = 25
 
 FP = np.zeros(N, dtype=np.float)
 TP = np.zeros(N, dtype=np.float)
 FN = np.zeros(N, dtype=np.float)
+pre = np.zeros(N, dtype=np.float)
+rec = np.zeros(N, dtype=np.float)
 not_found = []
 
-DEBUG = True
-VARIANT = 'multiple'
-BASE_PATH = '/home/vighnesh/images/symmetry/reflection_testing/reflection_testing/multiple/'
-mat = loadmat(BASE_PATH + '_data.mat')
-data = mat['data']
-
 for idx in range(1, 31):
+    print(idx)
+    img_in = io.imread(BASE_PATH + 'I_%03d.png' % idx)
+    img_in = util.img_as_float(img_in)
+    img_in = util.pad(img_in, [(PAD, PAD), (PAD, PAD),(0,0)], mode='constant')
+    angles = loadmat(DATA_PATH + 'angle_%03d.mat' % idx)['angle'][0][:N]#.astype(np.int)
+    distances = loadmat(DATA_PATH + 'displ_%03d.mat' % idx)['displ'][0][:N]#.astype(np.int)
 
-    name = BASE_PATH + 'I_%03d.png' % idx
-    #mat_name = '/home/vighnesh/images/symmetry/S/I%03d.mat' % idx
-    #mat = loadmat(mat_name)
-    print('Processing : ' + name)
 
     if data.shape[0] == 1:
         block = data[0, idx - 1]
@@ -47,58 +43,34 @@ for idx in range(1, 31):
     gt_lines = []
     for line in block.astype(np.int):
         true_x1, true_y1, true_x2, true_y2 = line
-        gt_lines += [utils.Line(true_x1, true_y1, true_x2, true_y2)]
+        gt_lines += [utils.Line(true_x1 + PAD, true_y1+ PAD, true_x2+ PAD, true_y2+ PAD)]
 
-    #else:
-    #    true_x1, true_y1, true_x2, true_y2 = block.astype(np.int)
+    #G = 0#len(gt_lines)
 
-        #true_x1, true_y1 = mat['segments'][0][0][0].astype(np.int)
-        #true_x2, true_y2 = mat['segments'][0][0][1].astype(np.int)
+    for line in gt_lines:
+        line.draw(img_in, white)
 
 
-    #print(gt_lines)
-    img_in = io.imread(name)
-    img_in = util.img_as_float(img_in)
-
-    if img_in.ndim == 2:
-        img_in = color.gray2rgb(img_in)
-
-    img_in = img_in[:, :, 0:3]
     img = color.rgb2gray(img_in)
-    #img = np.log(img + 1)
-    #plt.imshow(img, cmap='gray')
-    #plt.show()
-
     mreal, mimag = symmetry.compute_morlet(img, num_angles=32, sigma=2.0)
     w = max(img.shape)
-    sym, angle_bins = symmetry.symmetry(img, min_dist=0, max_dist=int(w*0.3),
-                                           num_angles=32,
-                                           morlet_real=mreal,
-                                           morlet_imag=mimag)
 
-
-    lines = utils.line_coords(img_in, sym, angle_bins, num_lines=N, drange = 10, arange=2)
-    for l in lines:
-
+    lines = []
+    for k in range(N):
+        t = (np.pi/2 - angles[k])%np.pi
+        r = distances[k]
+        l = utils.InfLine(r, t, img_in)
         x,y = symmetry.comput_center(img,min_dist=0, max_dist=w/2,num_angles=32,
                             morlet_real=mreal, morlet_imag=mimag,
                             r = l.r, angle=l.theta)
-        l.cx = x
-        l.cy = y
-
-    #line = utils.InfLine(111, np.pi/4, img_in)
-    #line.draw(img_in, black)
-    for line in gt_lines:
-        line.draw(img_in, white)
+        l.cx, l.cy = x,y
+        l.draw(img_in, color_list[k])
+        lines += [l]
 
 
     for i in range(N):
         #print(str(i + 1) + 'Line')
         subset = lines[0:i+1]
-
-
-        if DEBUG:
-            lines[i].draw(img_in, color_list[i])
 
         fn = len(gt_lines)
         tp = 0
@@ -139,13 +111,11 @@ for idx in range(1, 31):
         if (i + 1) == N and tp < 1:
             not_found.append(idx)
 
-    if DEBUG:
-        fname = '/home/vighnesh/images/symmetry/out/I%03d.png' % idx
-        io.imsave(fname, img_in)
+    fname = '/home/vighnesh/images/symmetry/out/I%03d.png' % idx
+    io.imsave(fname, img_in)
 
     #plt.imshow(img_in)
     #plt.show()
-
 
 print('TP = ',TP)
 print('FP = ',FP)
@@ -154,6 +124,7 @@ print('not found = ', not_found)
 
 print(TP/(TP + FP))
 print(TP/(TP + FN))
+
 
 plt.plot(TP/(TP + FN), TP/(TP + FP), marker='o')
 plt.axes().set_xlim(0,1.1)
